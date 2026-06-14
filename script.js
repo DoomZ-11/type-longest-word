@@ -2,6 +2,7 @@ const wordPath = "longest-word.txt";
 const tarChars = []
 
 let curChar = 0;
+let mistakes = 0;
 
 const cursorState = {
     x: 0,
@@ -47,7 +48,7 @@ function handleInput() {
 
             handleBackspace();
         }
-        else if (e.key.length === 1) {
+        else if (e.key.length === 1 && curChar < tarChars.length) {
             handleChar(e.key);
 
             curChar++;
@@ -56,10 +57,13 @@ function handleInput() {
         scrollCurCharIntoView();
         setCursorTarget();
         resetCursorBlink();
+        updateCounter();
     });
 }
 
 function handleChar(char) {
+    if (curChar >= tarChars.length) return;
+
     const tarChar = tarChars[curChar];
     const expected = tarChar.textContent;
 
@@ -68,12 +72,18 @@ function handleChar(char) {
     }
     else {
         tarChar.classList.replace("pending-char", "incorrect-char");
+
+        mistakes++;
     }
 }
 
 function handleBackspace() {
     const tarChar = tarChars[curChar];
 
+    if (tarChar.classList.contains("incorrect-char")) {
+        mistakes--;
+    }
+    
     tarChar.classList.remove("correct-char");
     tarChar.classList.remove("incorrect-char");
 
@@ -106,13 +116,15 @@ function setCursorTarget() {
     const cursor = document.getElementById("cursor");
     const tarChar = tarChars[curChar];
 
-    if (!cursor || !tarChar) return;
+    if (!cursor || !tarChar) {
+        cursor.style.height = 0;
+        return;
+    }
 
     const charRect = tarChar.getBoundingClientRect();
-    const containerRect = document.querySelector(".word-container").getBoundingClientRect();
+    const containerRect = document.querySelector(".text-container").getBoundingClientRect();
 
     cursorState.tarX = charRect.left - containerRect.left;
-
     cursorState.tarY = charRect.top - containerRect.top;
 
     cursor.style.height = `${charRect.height}px`;
@@ -139,6 +151,32 @@ function scrollCurCharIntoView() {
     });
 }
 
+function updateCounter() {
+    const charCounter = document.getElementById("char-counter");
+    const mistakeCounter = document.getElementById("mistake-counter");
+
+    if (curChar > 0) {
+        mistakeCounter.innerHTML = `${(roundTo((curChar - mistakes) / curChar, 4) * 100).toFixed(2)}% accuracy`;
+    }
+    else {
+        mistakeCounter.innerHTML = ``;
+    }
+
+    if (curChar > 0) {
+        charCounter.innerHTML = 
+            `${curChar.toLocaleString('en-US')}/${tarChars.length.toLocaleString('en-US')}<br>` +
+            `(${(roundTo(curChar / tarChars.length, 6) * 100).toFixed(4)}%)`;
+    }
+    else {
+        charCounter.innerHTML = ``;
+    }
+}
+
+function roundTo(num, decimals) {
+    const factor = Math.pow(10, decimals);
+    return Math.round(num * factor) / factor;
+}
+
 function lerp(a, b, t) {
     return a + (b - a) * t;
 }
@@ -152,6 +190,8 @@ async function main() {
     handleInput();
 
     scrollCurCharIntoView();
+
+    updateCounter();
 }
 
 document.addEventListener("DOMContentLoaded", main);
